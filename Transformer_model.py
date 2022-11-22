@@ -198,17 +198,19 @@ class Transformer(nn.Module):
         mask = torch.tensor(tril, dtype=torch.bool, requires_grad=False, device=query.device)
         return mask 
     
-    def generate(self, src, tgt, stop_angle=0.25):
+    def generate(self, src, dec_input, stop_angle=0.25, target_len=4):
         self.eval()
         result = np.zeros((1, 3))
-        batch_size = src.shape[0]
+        decoder_input = dec_input
         
         while result[-1, 2] < stop_angle:
-            outputs = self.forward(src, tgt).to('cpu')
-            outputs = outputs.squeeze(dim = 0)
-            outputs = outputs.transpose(0, 1)
-            outputs = outputs.detach().numpy()
-            print(outputs.shape, result.shape)
+            for t in range(target_len)            
+                outputs = self.forward(src, decoder_input).to('cpu')
+                outputs = outputs.squeeze(dim = 0)
+                outputs = outputs.transpose(0, 1)
+                outputs = outputs[:,0:3]
+                outputs = outputs.detach().numpy()
+                #print(outputs.shape, result.shape)
             result = np.concatenate((result, outputs), axis=0)
             src[:, 6] = src[:, 6] + 0.01 
         
@@ -222,7 +224,7 @@ class Transformer(nn.Module):
             torch.save(self, PATH)
         return
         
-def build_model(tgt_vocab_size=3, device=torch.device("cuda:0"), max_len=256, d_embed=1, n_layer=3, d_model=24, h=8, d_ff_1=128, d_ff_2=32):
+def build_model(tgt_vocab_size=4, device=torch.device("cuda:0"), max_len=256, d_embed=1, n_layer=3, d_model=24, h=8, d_ff_1=128, d_ff_2=32):
     
     pos_embed = PositionalEncoding(d_embed=d_embed, max_len=max_len, device=device)
     src_embed = TransformerEmbedding(pos_embed= copy.deepcopy(pos_embed))

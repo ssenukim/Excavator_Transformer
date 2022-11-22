@@ -7,17 +7,20 @@ class CustomDataset(Dataset):
     def __init__(self, csv_path, a, b):
         df = pd.read_csv(csv_path)
         self.input = df.iloc[a:b, 0:7].values 
-        self.output = df.iloc[a:b, 7:].values
         self.input = torch.FloatTensor(self.input)
-        self.output = torch.FloatTensor(self.output)
-
+        semi_1 = torch.FloatTensor(b-a, 1).fill_(-1)
+        semi_2 = torch.FloatTensor(df.iloc[a:b, 7:].values)
+        self.dec_input = torch.cat((semi_1, semi_2), dim=1)
+        self.output = torch.cat((semi_2, semi_1), dim=1)
+        
     def __len__(self):
         return len(self.input)
     
     def __getitem__(self, idx):
         input_ = torch.FloatTensor(self.input[idx])
         output_ = torch.FloatTensor(self.output[idx])
-        return input_, output_
+        dec_input_ = torch.FloatTensor(self.dec_input[idx])
+        return input_, output_, dec_input_
 
 def MAPEval(y_pred, y_true):
     return np.mean(np.abs((y_true - y_pred) / y_true)) * 100

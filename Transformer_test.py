@@ -1,35 +1,31 @@
+#%%
 import torch 
 from torch.utils.data import DataLoader, Dataset 
 import pandas as pd 
 import numpy as np 
 import matplotlib.pyplot as plt
 from torch.autograd import Variable 
-from Transformer_model import *
-from Utility import * 
+from Utility import *
 
-if __name__ == '__main__':
-    CSV_PATH = 'C:/Users/USER/Programming/Excavator/Data/totalExcavationDataR4_cut.csv'    
-    
-    train_dataset = CustomDataset(CSV_PATH, 0, 1)
-    train_dataloader = DataLoader(train_dataset, batch_size=1, shuffle=True, num_workers=6, pin_memory=True)
+model = torch.load('C:/Users/USER/Programming/Excavator/Transformer/Trained_model/transformer_1_3lyr.pt')
+#print(model)
+#%%
+test_input_list = make_input_tensor('C:/Users/USER/Programming/Excavator/Data/Excavation_test_data_refrained.csv', 0, 4)
 
-    device = torch.device('cuda:0' if torch.cuda.is_available else 'cpu')
-    print(device, torch.cuda.get_device_name(0))
+result_list = []
+tgt = torch.FloatTensor(1, 3).fill_(-1).to('cuda:0')
+for inputs in test_input_list:
+    inputs = inputs.squeeze(dim=0).to('cuda:0')
+    result = model.generate(inputs, tgt, 0.20)
+    result_list.append(result)
 
-    model = build_model()
+test_dataset_answer_list = []
+for n in range(4):
+    df = pd.read_csv('C:/Users/USER/Programming/Excavator/Data/Excavation_test_answer_' + str(n+1) + '.csv')
+    test_dataset_answer = torch.FloatTensor(df.values)
+    test_dataset_answer = test_dataset_answer.numpy()
+    test_dataset_answer_list.append(test_dataset_answer) 
 
-    learning_rate = 0.001
-    num_epoch = 120
-    optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate)
-    criterion = nn.MSELoss()
-    
-    for x, y in train_dataloader:
-        optimizer.zero_grad()
-        x = x.to(device)
-        y = y.to(device)
-        
-        print(x, x.shape)
-        print(y, y.shape)
-        
-
-        print(output, output.shape)
+#print(result_list[0].shape, test_dataset_answer_list[0].shape)
+model_score = total_MAPE_score(result_list, test_dataset_answer_list)
+print('total score: ', model_score)
